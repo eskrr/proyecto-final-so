@@ -37,10 +37,10 @@ connection, client_address = sock.accept()
 # PageSize p                      // en bytes
 
 def RealMemory(m):
-	return ''
+	return 
 
 def SwapMemory(n):
-	return ''
+	return 
 
 def PageSize(p):
 	return ''
@@ -52,7 +52,7 @@ def PageSize(p):
 # PolíticaMemory mm     // la política de memoria a simular. Será el primer comando una vez concluída la inicialización.
 
 def PoliticaMemory(mm):
-	return ''
+	return
 
 # P n p   (cargar un proceso)
 # Se trata de una solicitud de “n” bytes para cargar un proceso a la memoria.
@@ -62,7 +62,7 @@ def PoliticaMemory(mm):
 # Ejemplo:
 
 def P(n,p):
-	return ''
+	return
 
 # A d p m  
 # Es una solicitud para accesar la dirección virtual “d” del proceso “p”. Si “m” es 0, la dirección correspondiente sólo se lee; si es 1, también se modifica.“d” puede tener un valor desde cero hasta la dirección virtual máxima del proceso expresada en bytes. 
@@ -72,24 +72,24 @@ def P(n,p):
 # A 17 5 0  (accesar para lectura la dirección virtual 17 del proceso 5)
 
 def A(d,p,m):
-	return ''
+	return
 
 # L p
 # Liberar las páginas del proceso “p”.
 
 def L(p):
-	return ''
+	return
 
 # PROCESS: Se liberan todas las páginas del proceso “p”, tanto las que estaban en memoria real como aquellas que se encontraban en el área de swapping, quedando varios marcos de página o pedazos del área de swapping vacíos y disponibles para otras operaciones. 
 
 def F():
-	return ''
+	return
 
 # F 
 # Fin. Es siempre la última línea de un conjunto de especificaciones; pero pueden seguir otras líneas más para otro conjunto de solicitudes, empezando por el comando que indica la política. Habrá al menos dos especificaciones, una para cada política de reemplazo.
 
 def E():
-	return ''
+	return
 
 # E
 # Exit. Última línea del archivo. 
