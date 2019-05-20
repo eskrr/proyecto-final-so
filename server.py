@@ -112,10 +112,9 @@ try:
     data = connection.recv(256)
     print >>sys.stderr, 'server received "%s"' % data
     if data:
-      print >>sys.stderr, 'sending answer back to the client'
-
       call_instruction(data)
 
+      print >>sys.stderr, 'sending answer back to the client'
       connection.sendall('va de regreso...' + ''.join(data))
     else:
       print >>sys.stderr, 'no data from', client_address
