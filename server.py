@@ -43,7 +43,7 @@ def SwapMemory(n):
 	return 
 
 def PageSize(p):
-	return ''
+	return
 
 # Respuestas del servidor al cliente: después de cada uno de estos comandos, el servidor regresa al cliente un mensaje que indica qué fué lo que se recibió; por ejemplo “Recibido - real memory tal y tal”. El cliente siempre despliega (es decir, envía a stderr) el mensaje enviado al servidor, y el mensaje-resultado que el servidor envía de regreso al cliente
 
