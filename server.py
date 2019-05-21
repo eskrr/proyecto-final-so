@@ -143,7 +143,8 @@ def terminarProcesos():
 ####################################################
 # Una vez se tienen todos los tamanos de memorias y pagina definidos, se crean todos los marcos de pagina
 # que quepan para cada memoria (Real y Swap). Cada marco de pagina se inicializa con el valor de None
-# 
+# Al final se le asigna el valor de True a la variable global manejadorMemoriaListo, dicho booleano es util
+# para que las funciones P(), L() y A() puedan funcionar.
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -158,8 +159,8 @@ def crearMemorias():
 	global paginasDisponiblesReal
 	global paginasDisponiblesSwap
 	global manejadorMemoriaListo
-	nMarcosPaginaReal = int(math.ceil((tamanoMemoriaReal*1024)/tamanoPagina))
-	nMarcosPaginaSwap = int(math.ceil((tamanoMemoriaSwap*1024)/tamanoPagina))
+	nMarcosPaginaReal = int(math.ceil((1.0*tamanoMemoriaReal*1024)/tamanoPagina))
+	nMarcosPaginaSwap = int(math.ceil((1.0*tamanoMemoriaSwap*1024)/tamanoPagina))
 	for i in range (0, nMarcosPaginaReal):
 		memoriaReal.append(None)
 		paginasDisponiblesReal.append(i)
@@ -394,7 +395,7 @@ def PageSize(p):
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (mm) -> string que contiene al polita de reemplazamiento a seguir
 ####################################################
 #################### SALIDAS #######################
 ####################################################
@@ -413,14 +414,24 @@ def PoliticaMemory(mm):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# La funcion P es una de las mas complejas. Primero se tienen 3 edge cases para evitar errores de ejecucion: se revisa que el manejador de memoria ya este listo
+# Crea un proceso con id (p) y tamano (n) en kilobytes. No obstante, existen 3 casos que pueden suceder:
+# 1-. Todos los marcos de pagina que se desean crear caben en memoria Real
+# 2-. Solo algunos marcos de pagina caben en la memoria Real, por lo que el resto tendran que entrar 
+#     a la memoria Real por medio de un Swap_out a diversos marcos de pagina. La eleccion de cuales marcos de pagina 
+#     deberan sufrir del swap_out la realiza la funcion swapMarco. 
+# 3-. La tercera opcion es que tanto la memoria real como swap esten llenas, por lo que no se realiza la creacion del 
+#     proceso.
+# Al inicio de la funcion se revisan un total de 3 edge cases para comprobar que el tamano y el id del proceso sean 
+# indicados, asi como verificar que el manejador de memoria ya este listo para ejecutar esta funcion.
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (n) -> tamano en kilobytes del proceso a crear
+# (p) -> id del proceso a crear
 ####################################################
 #################### SALIDAS #######################
-####################################################
+####################################################\
+# Ninguna
 def P(n,p):
 	global memoriaReal
 	global memoriaSwap
@@ -440,7 +451,7 @@ def P(n,p):
 	if(buscarProcesoPorId(p) != -1): 
 		print >>sys.stderr, "******************El ID del proceso que deseas crear ya existe, porfavor selecciona otro ID******************"
 		return
-	nMarcosPagina = int(math.ceil(n/tamanoPagina))
+	nMarcosPagina = int(math.ceil(1.0*n/tamanoPagina))
 	idProcesoPorRemplazar = None
 
 #Caben todos en memoria real
@@ -458,7 +469,7 @@ def P(n,p):
 
 	#Entran directo a memoria real los pocos marcos que aun caben
 		if(len(paginasDisponiblesReal) > 0):			
-			for i in range(0, nMarcosPagina-len(paginasDisponiblesReal)):
+			for i in range(0, len(paginasDisponiblesReal)):
 				memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i, time.time()] #[indexMarcoReal] = [idProceso, idMarcoVirtual, tiempoMemoriaReal]	
 
 	#swap-in, indicando direccion de marco virtual inicial y final, ademas del id del proceso
@@ -477,14 +488,24 @@ def P(n,p):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Pide el acceso a una direccion de marco virtual especifica, de un proceso especifico. Dicha direccion se busca primero
+# en memoria real, en caso de no encontrarla, se produce un page fault, por lo que se realiza un swap_in. La funcion swapMarco elije 
+# por su cuenta cual es el marco de pagina de la memoria Real candidato a ser reemplazado, dependiendo de la politica seleccionada. 
+# Despues de ejecuta el swap_in, se vuelve a buscar en memoria real para acceder el marco de pagina. En caso de que no se genere un page fault,
+# se accede directamente al marco de pagina. Al acceder, dependiendo del parametro de entrada (m), se describe la accion:
+# 0-> leer, 1-> modificar. Ademas, antes de realizar cualquier busqueda, se comprueba que no pasen 3 edge cases importantes, los cuales
+# comprueban que la direccion y el proceso sean validos. En caso de que cualquiera de ellos se cumpla, se imprime su respectivo mensaje y 
+# se sale directamente de la ejecucion de A
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (d) -> direccion de marco virtual del proceso al que se quiere acceder
+# (p) -> id del proceso al que se quiere acceder
+# (m) -> bit que indica lectura en caso de ser 0 y modificacion en caso de ser 1
 ####################################################
 #################### SALIDAS #######################
 ####################################################
+# Ninguna
 def A(d,p,m):
 	global direccionReal
 	global comandosA
@@ -530,14 +551,16 @@ def A(d,p,m):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Borra todos los marcos de pagina existentes en memoria de un proceso en especifico. Ademas termina 
+# oficialmente la ejecucion de ese proceso
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (p) -> id del proceso a eliminar
 ####################################################
 #################### SALIDAS #######################
 ####################################################
+# Ninguna
 def L(p):
 	global memoriaReal
 	global memoriaSwap
@@ -552,16 +575,16 @@ def L(p):
 	for i in range(0, len(memoriaReal)):
 		if(memoriaReal[i]!=None):
 			if(memoriaReal[i][0] == p):
-				paginasDisponiblesReal.append(i)
-				memoriaReal[i] = None
+				paginasDisponiblesReal.append(i) #agrega el marco de pagina a la lista de paginas de memoria real disponibles
+				memoriaReal[i] = None #borra el contenido del marco de pagina
 	for i in range(0, len(memoriaSwap)):
 		if(memoriaSwap[i]!=None):
 			if(memoriaSwap[i][0] == p):
-				paginasDisponiblesSwap.append(i)
-				memoriaSwap[i] = None
-	paginasDisponiblesReal.sort()
+				paginasDisponiblesSwap.append(i) #agrega el marco de pagina a la lista de paginas de memoria swap disponibles
+				memoriaSwap[i] = None #borra el contenido del marco de pagina
+	paginasDisponiblesReal.sort() #ordena ambas memorias de menor a mayor
 	paginasDisponiblesSwap.sort()		
-	eliminarProcesoEspecifico(p)
+	eliminarProcesoEspecifico(p)  #borra el proceso p() de las variables globales y actualiza su metrica de rendimiento
 	print >>sys.stderr, "Las paginas de la memoria Real y memoria Swap del proceso "+str(p)+" han sido liberadas"
 	return
 
@@ -572,7 +595,8 @@ def L(p):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Termina todos los procesos, imprime el historial de comandos en una tabla, imprime las 
+# metricas de rendimiento de cada proceso y borra el contenido de las memorias y variables globales.
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -580,16 +604,17 @@ def L(p):
 ####################################################
 #################### SALIDAS #######################
 ####################################################
+# Ninguna
 def F():	
   terminarProcesos()
-  imprimirTablaComados()
+  imprimirTablaComandos()
   imprimirMetricasProcesos()
   borraMemorias()
   return
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Termina el programa
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -597,10 +622,26 @@ def F():
 ####################################################
 #################### SALIDAS #######################
 ####################################################
+# Ninguna
 def E():
 	global exit
 	exit = True
 	return
+####################################################	
+################### QUE HACE? ######################
+####################################################
+# Escribe en terminal el texto recibido de parametro de entrada como si fuera un comentario
+####################################################
+#################### ENTRADAS ######################
+####################################################
+# (texto) -> string con texto que debera unicamente imprimirse
+####################################################
+#################### SALIDAS #######################
+####################################################
+# Ninguna
+def C(texto):
+	print >>sys.stderr, texto
+	return	
 ##########################################################################################################################################
 ####################################### FUNCIONES CREADAS PARA DESPLEGAR FEEDBACK AL CLIENTE #############################################
 ########################################################################################################################################## 
@@ -628,7 +669,7 @@ def imprimirComando(time, comando):
 	print tabulate([tablaComandos[0], renglonComando], headers='firstrow', tablefmt='orgtbl')
 	return
 
-def imprimirTablaComados():
+def imprimirTablaComandos():
 	print tabulate(tablaComandos, headers='firstrow', tablefmt='orgtbl')
 	return
 
