@@ -81,14 +81,15 @@ memoriaReal = []            # CONTENIDO DE LISTA: (cada index representa el ID d
                               # [ 
                               #   [ 
                               #     (idProceso), 
-                              #     (idMarcoVirtual) 
+                              #     (idMarcoVirtual),
+	              #	    (tiempoEnMemoriaReal)
                               #   ]
                               # ]
 memoriaSwap = []            # CONTENIDO DE LISTA: (cada index representa el ID de cada marco swap) 
                               # [ 
                               #   [ 
                               #     (idProceso), 
-                              #     (idMarcoVirtual) 
+                              #     (idMarcoVirtual)
                               #   ]
                               # ]
 
@@ -105,7 +106,7 @@ procesos = []               # CONTENIDO DE LISTA: (cada index representa un proc
                               # [
 	              #    [
                               #       (idProceso),
-	              #	      (marcosRestantes)		              
+	              #       (tamanoEnMarcosPagina)		              
 	              #    ]
                               # ]
                             # Utilizado tambien para saber cual proceso reemplazar:
@@ -192,41 +193,6 @@ def borraMemorias():
 #################### SALIDAS #######################
 ####################################################
 # Ninguna
-def indexNuevoProcesoPorReemplazar():
-	if(politicaReemplazo == "FIFO"):
-		return int(0)
-	elif(politicaReemplazo == "LIFO"):
-		return int(len(procesos)-1)
-####################################################	
-################### QUE HACE? ######################
-####################################################
-# 
-####################################################
-#################### ENTRADAS ######################
-####################################################
-# Ninguna
-####################################################
-#################### SALIDAS #######################
-####################################################
-# Ninguna
-def eliminarProcesoReemplazado():
-	if(politicaReemplazo == "FIFO"):
-		procesos.pop(0)
-	elif(politicaReemplazo == "LIFO"):
-		procesos.pop()
-	return
-####################################################	
-################### QUE HACE? ######################
-####################################################
-# 
-####################################################
-#################### ENTRADAS ######################
-####################################################
-# Ninguna
-####################################################
-#################### SALIDAS #######################
-####################################################
-# Ninguna
 def eliminarProcesoEspecifico(p):
 	global procesos
 	global procesosTerminados
@@ -251,8 +217,47 @@ def eliminarProcesoEspecifico(p):
 def buscarProcesoPorId(id):
 	for process in procesos:
 		if(process[0] == id):
-			return True
-	return False
+			return procesos.index(process)
+	return -1
+####################################################	
+################### QUE HACE? ######################
+####################################################
+# 
+####################################################
+#################### ENTRADAS ######################
+####################################################
+# Ninguna
+####################################################
+#################### SALIDAS #######################
+####################################################
+# Ninguna	
+	#Se ejecuta el while mientras que haya marcos pendientes por "swap-in" a memoria real
+def swapInMarco(direccionActual, idProceso):
+	global memoriaReal
+	global memoriaSwap
+	global paginasDisponiblesSwap
+	policaFIFO = False
+	if(politicaReemplazo == "FIFO"):
+		politicaFIFO = True
+	direccion = -1
+	#Se recorre la memoria real en busqueda del marco de pagina con el tiempo mas viejo
+	if(politicaFIFO):
+		tiempoMasViejo = time.time()
+		for mem in memoriaReal:
+			if(mem[2] < tiempoMasViejo):
+				tiempoMasViejo = mem[2]
+				direccion = memoriaReal.index(mem)
+	#Se recorre la memoria real en busqueda del marco de pagina con el tiempo mas reciente
+	else:
+		tiempoMasReciente = 0.0
+		for mem in memoriaReal:
+			if(mem[2] > tiempoMasReciente):
+				tiempoMasReciente = mem[2]
+				direccion = memoriaReal.index(mem)	
+	#Se realiza el swap con la direccion seleccionada				
+	memoriaSwap[paginasDisponiblesSwap.pop(0)] = memoriaReal[direccion] #	
+	memoriaReal[direccion] = [idProceso, direccionActual, time.time()] # Modifica la lista:  [indexMarcoReal][idProceso, idMarcoVirtual]
+	return	
 ##########################################################################################################################################
 ############################################# PETICIONES QUE PUEDE REALIZAR EL CLIENTE ###################################################
 ##########################################################################################################################################	
@@ -354,28 +359,31 @@ def PoliticaMemory(mm):
 #################### SALIDAS #######################
 ####################################################
 def P(n,p):
-	if(not manejadorMemoriaListo):
-		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
-		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
-		return
 	global memoriaReal
 	global memoriaSwap
 	global paginasDisponiblesReal
 	global paginasDisponiblesSwap
-	global procesos	
-	idProcesoPorRemplazar = None
+	global procesos		
+	if(not manejadorMemoriaListo):
+		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
+		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
+		return
 	n = int(n)
 	p = int(p)
-	nMarcosPagina = int(math.ceil(n/tamanoPagina))
-	if(n>tamanoMemoriaReal*1024):	#Tamano de proceso excede el tamano de la memoria real
-		print >>sys.stderr, "El tamano del proceso no puede ser mas grande que el de la memoria real"
+	if(n>tamanoMemoriaReal*1024):
+		print >>sys.stderr, "El tamano del proceso excede el de la memoria real"
+		return	
+	if(buscarProcesoPorId(p) != -1): 
+		print >>sys.stderr, "El ID del proceso que deseas crear ya existe, porfavor selecciona otro ID"
 		return
+	nMarcosPagina = int(math.ceil(n/tamanoPagina))
+	idProcesoPorRemplazar = None
 
 #Caben todos en memoria real
 	if(nMarcosPagina <= len(paginasDisponiblesReal)):	
-		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, marcosRestantes]
 		for i in range(0, nMarcosPagina):
-			memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i] # Modifica la lista:  [indexMarcoReal] = [idProceso, idMarcoVirtual]
+			memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i, time.time()] #[indexMarcoReal] = [idProceso, idMarcoVirtual, tiempoMemoriaReal]
+		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso]			
 
 #Caben algunos directamente en memoria real y los demas entran por reemplazo (swap)
 	elif(nMarcosPagina > len(paginasDisponiblesReal) and nMarcosPagina-len(paginasDisponiblesReal) <= len(paginasDisponiblesSwap)):	
@@ -384,26 +392,12 @@ def P(n,p):
 	#Entran directo a memoria real los pocos marcos que aun caben
 		if(len(paginasDisponiblesReal) > 0):			
 			for i in range(0, nMarcosPagina-len(paginasDisponiblesReal)):
-				memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i] # Modifica la lista:  [indexMarcoReal] = [idProceso, idMarcoVirtual]	
+				memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i, time.time()] #[indexMarcoReal] = [idProceso, idMarcoVirtual, tiempoMemoriaReal]	
 
-	#Se ejecuta el while mientras que haya marcos pendientes por "swap-in" a memoria real
-		while(marcosReemplazados < nMarcosPagina): 
-			indexProceso = indexNuevoProcesoPorReemplazar()	#Se escoje para reemplazar el proceso correspondiente a la politica,
-						#si se llegan a reemplazar todos los marcos de ese proceso (procesos[i][1] == 0),
-						#entonces se escoje el proximo proceso a reemplazar, segun la politica correspondiente
-			#Se recorre la memoria real en busqueda de marcos del proceso por reemplazar
-			for i in range(0, len(memoriaReal)):				
-				if(procesos[indexProceso][1] == 0):#Se agotaron los marcos en memoria real del proceso por reemplazar
-					eliminarProcesoReemplazado()#Se elimina proceso del arreglo procesos
-					break
-				elif(marcosReemplazados == nMarcosPagina):#Ya se termino de "swap-in" los marcos solicitados
-					break
-				elif(memoriaReal[i][0] == procesos[indexProceso][0]):
-					memoriaSwap[paginasDisponiblesSwap.pop(0)] = memoriaReal[i] #	
-					memoriaReal[i] = [p, marcosReemplazados] # Modifica la lista:  [indexMarcoReal][idProceso, idMarcoVirtual]	
-					marcosReemplazados+=1
-					procesos[indexProceso][1] -= 1
-		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, marcosRestantes]				
+	#swap-in, indicando direccion de marco virtual inicial y final, ademas del id del proceso
+		for i in range(marcosReemplazados, nMarcosPagina):
+			swapInMarco(marcosReemplazados, p)
+		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso]				
 			
 #Memoria real y Memoria swap llenas
 	else:
@@ -425,15 +419,22 @@ def P(n,p):
 #################### SALIDAS #######################
 ####################################################
 def A(d,p,m):
+	global direccionReal
 	if(not manejadorMemoriaListo):
 		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
 		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
-		return	
-	global direccionReal
+		return		
 	d=int(d)
 	p=int(p)
 	m=int(m)
+	if(buscarProcesoPorId(p) == -1):
+		print >>sys.stderr, "El proceso al que deseas acceder no existe"
+		return			
 	marcoVirtual = d/tamanoPagina
+	if(marcoVirtual >= procesos[buscarProcesoPorId(p)][1]):
+		print >>sys.stderr, "El proceso "+str(p)+" no contiene la direccion "+str(d)
+		return		
+#La direccion se encontro en Memoria Real	
 	for real in memoriaReal:
 		if(real[0]==p and real[1]==marcoVirtual):
 			if(m==0):
@@ -442,15 +443,17 @@ def A(d,p,m):
 				print >>sys.stderr, "Se modifico ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
 			direccionReal = (memoriaReal.index(real) * tamanoPagina) + (d % tamanoPagina)
 			return 
-	for swap in memoriaSwap:
-		if(swap[0]==p and swap[1]==marcoVirtual):
+#Page Fault, se hace swap-in a ese proceso de vuelta a Memoria Real			
+	swapInMarco(marcoVirtual, p)	
+#Ahora que se realizo el swap-in, se vuelve a buscar la direccion virtual en memoria Real	
+	for real in memoriaReal:
+		if(real[0]==p and real[1]==marcoVirtual):
 			if(m==0):
-				print >>sys.stderr, "Se leyo ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
+				print >>sys.stderr, "Se leyo ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
 			elif(m==1):
-				print >>sys.stderr, "Se modifico ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
-			direccionReal = (memoriaSwap.index(real) * tamanoPagina) + (d % tamanoPagina)
-			return
-	print >>sys.stderr, "La direccion ["+str(p)+"."+str(d)+"] no se encuentra en memoria Real ni Swap"		
+				print >>sys.stderr, "Se modifico ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
+			direccionReal = (memoriaReal.index(real) * tamanoPagina) + (d % tamanoPagina)
+			return 	
 	return
 ####################################################	
 ################### QUE HACE? ######################
@@ -464,13 +467,16 @@ def A(d,p,m):
 #################### SALIDAS #######################
 ####################################################
 def L(p):
+	global memoriaReal
+	global memoriaSwap
 	if(not manejadorMemoriaListo):
 		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
 		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
 		return	
-	global memoriaReal
-	global memoriaSwap
 	p=int(p)
+	if(buscarProcesoPorId(p) == False):
+		print >>sys.stderr, "El proceso que deseas eliminar no existe"
+		return
 	if(eliminarProcesoEspecifico(p) == 0):
 		for i in range(0, len(memoriaReal)):
 			if(memoriaReal[i]!=None):
