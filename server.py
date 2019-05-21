@@ -1,9 +1,9 @@
 ##########################################################################################################################################
 #AUTORES: 
-# -Antonio de Jesus Rodriguez Navarro - A00820049
-# -Sebastian Esquer - A00820
-#
-#
+# - Antonio de Jesus Rodriguez Navarro - A00820049
+# - Sebastian Esquer Gaitan - A00820249
+# - Pedro Antonio Gamez - A00369538
+# - Gabriel Enrique Zamora - A01330721
 
 #DESCRIPCION RESUMIDA DEL PROYECTO:
 # El proyecto tiene 2 componentes principales, cada uno dividido en un archivo .py diferente: 
@@ -143,6 +143,7 @@ def terminarProcesos():
 ####################################################
 # Una vez se tienen todos los tamanos de memorias y pagina definidos, se crean todos los marcos de pagina
 # que quepan para cada memoria (Real y Swap). Cada marco de pagina se inicializa con el valor de None
+# 
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -150,7 +151,7 @@ def terminarProcesos():
 ####################################################
 #################### SALIDAS #######################
 ####################################################
-#
+# Ninguna
 def crearMemorias():
 	global memoriaReal
 	global memoriaSwap
@@ -170,7 +171,8 @@ def crearMemorias():
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Inicializa todas las variables gloabales en 0, justo como cuando se crearon
+# Esta funcion es util para la funcion F (justo antes de terminar el programa)
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -211,15 +213,17 @@ def borraMemorias():
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Elimina un proceso en especifico dado un id de proceso, borrandolo de la lista procesos, agregandolo a la lista procesosTerminados y 
+# finalmente guardando el tiempo de terminacion del proceso en la clase metricasProcesos. Es importante mencionar que no elimina
+# los marcos de memoria almacenados, de eso se encarga el resto del codigo de la funcion L().
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (p) -> El id del proceso a eliminar
 ####################################################
 #################### SALIDAS #######################
 ####################################################
-# Ninguna
+# Regresa 0 si logro borrar el proceso, y un 1 si no encontro el proceso (no existe un proceso con dicho id)
 def eliminarProcesoEspecifico(p):
   global procesos
   global procesosTerminados
@@ -229,20 +233,20 @@ def eliminarProcesoEspecifico(p):
       procesosTerminados.append(procesos.pop(i)[0])
       metricasProcesos[p].end_time = time.time()
       return 0
-  print >> sys.stderr, "No se encontro el proceso especificado"
+  print >> sys.stderr, "******************No se encontro el proceso especificado******************"
   return -1	
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Busca el index de un proceso en especifico dentro de la lista procesos, dado el id del proceso a buscar.
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (id) -> id del proceso a buscar
 ####################################################
 #################### SALIDAS #######################
 ####################################################
-# Ninguna
+# Regresa el index del proceso que buscaba en caso de que lo encuentre, y un -1 si no encuentra ningun proceso con dicho id
 def buscarProcesoPorId(id):
 	for process in procesos:
 		if(process[0] == id):
@@ -251,22 +255,31 @@ def buscarProcesoPorId(id):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# Funcion modular que se encarga de realizar el swap_in (y el swap_out al mismo tiempo). Su operacion depende de la politica de 
+# reemplazo que haya elegido el usuario (FIFO o LIFO). Primero se selecciona el marco de pagina que sufrira de swap_out. 
+# En caso de ser FIFO, se busca en la Memoria Real el marco de pagina con mas tiempo dentro de la memoria real, mientras que 
+# en caso de ser LIFO, se busca en la Memoria Real el marco de pagina con menos tiempo dentro de lamemoria real. Para cualquiera
+# que haya sido la politica, se guarda la direccion Real del marco candidato a ser reemplazado.
+# Es importante tomar en cuenta que los parametros de entrada describen los datos del proceso que entrara a Memoria Real.
+# Puesto que ya se tiene la direccion del marco candidato, solo es cuestion de realizar el cambio (un swap_out o un swap_in).
+# El hecho de ser un swap_out o swap_in depende de donde se llame la funcion, al ser llamada por la funcion P(), significa un 
+# swap_out de un marco de Memoria Real a Memoria Swap, mientras que al ser llamada por la funcion A(), representa un swap_in de un
+# marco de Memoria Swap directo a Memoria Real.
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (direccionActual) -> la direccion virtual del marco de pagina que entrara a Memoria Principal
+# (idProceso) -> el id del proceso del marco de pagina que entrara a Memoria Principal
 ####################################################
 #################### SALIDAS #######################
 ####################################################
-# Ninguna	
+# Ninguna
 	#Se ejecuta el while mientras que haya marcos pendientes por "swap-in" a memoria real
 def swapMarco(direccionActual, idProceso):
 	global memoriaReal
 	global memoriaSwap
 	global paginasDisponiblesSwap
-	global metricasProcesos
-	policaFIFO = False
+	politicaFIFO = False
 	if(politicaReemplazo == "FIFO"):
 		politicaFIFO = True
 	direccion = -1
@@ -287,19 +300,20 @@ def swapMarco(direccionActual, idProceso):
 	#Se realiza el swap con la direccion seleccionada				
 	memoriaSwap[paginasDisponiblesSwap.pop(0)] = memoriaReal[direccion] #	
 	memoriaReal[direccion] = [idProceso, direccionActual, time.time()] # Modifica la lista:  [indexMarcoReal][idProceso, idMarcoVirtual]
-	metricasProcesos[idProceso].swap_ins+=1
-	metricasProcesos[idProceso].swap_outs+=1
 	return	
 ##########################################################################################################################################
 ############################################# PETICIONES QUE PUEDE REALIZAR EL CLIENTE ###################################################
 ##########################################################################################################################################	
 ################### QUE HACE? ######################
 ####################################################
-#
+# En esencia solo se le asigna a la variable global tamanoMemoriaReal el tamano de memoria real (en kilobytes) que el usuario especifique. No 
+# obstante, se agrego un edge case donde se considera el caso de tamanos negativos. En caso de que el edge case se cumpla, se terminara el programa (se llama a F y E),
+# debido a que son asignaciones de variables globales criticas para el funcionamiento del programa. Ademasdemas de un if que llamara a la funcion crearMemorias()
+# en el momento en el que ser hayan utilizado las 3 funciones de inicializacion: RealMemory(), SwapMemory(), PageSize() y PoliticaMemory()
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-#
+# (m) = Tamano en kilobytes de la memoria princial
 ####################################################
 #################### SALIDAS #######################
 ####################################################
@@ -308,7 +322,9 @@ def RealMemory(m):
 	global tamanoMemoriaReal
 	m = int(m)
 	if(m<0):
-		print >>sys.stderr, "El tamano de la Memoria Real no es valido"
+		print >>sys.stderr, "******************El tamano de la Memoria Real no es valido******************"
+		F()
+		E()
 		return
 	tamanoMemoriaReal = m
 	if(tamanoMemoriaReal!=None and tamanoMemoriaSwap!=None and tamanoPagina!=None and politicaReemplazo!=None):
@@ -317,11 +333,14 @@ def RealMemory(m):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# En esencia solo se le asigna a la variable global tamanoMemoriaSwap el tamano de memoria swap (en kilobytes) que el usuario especifique. No 
+# obstante, se agrego un edge case donde se considera el caso de tamanos negativos. En caso de que el edge case se cumpla, se terminara el programa 
+# (se llama a F y E), debido a que son asignaciones de variables globales criticas para el funcionamiento del programa. Ademasdemas de un if que llamara a la 
+# funcion crearMemorias() en el momento en el que ser hayan utilizado las 3 funciones de inicializacion: RealMemory(), SwapMemory(), PageSize() y PoliticaMemory()
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (n) -> tamano en kilobytes de la memoria swap
 ####################################################
 #################### SALIDAS #######################
 ####################################################
@@ -330,7 +349,9 @@ def SwapMemory(n):
 	global tamanoMemoriaSwap
 	n = int(n)
 	if(n<0):
-		print >>sys.stderr, "El tamano de la Memoria Swap no es valido"
+		print >>sys.stderr, "******************El tamano de la Memoria Swap no es valido******************"
+		F()
+		E()
 		return	
 	tamanoMemoriaSwap = n
 	if(tamanoMemoriaReal!=None and tamanoMemoriaSwap!=None and tamanoPagina!=None and politicaReemplazo!=None):
@@ -339,11 +360,14 @@ def SwapMemory(n):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# En esencia solo se le asigna a la variable global tamanoPagina el tamano de pagina (en bytes) que el usuario especifique. No 
+# obstante, se agrego un edge case donde se considera el caso de tamanos negativos. En caso de que el edge case se cumpla, se terminara el programa 
+# (se llama a F y E), debido a que son asignaciones de variables globales criticas para el funcionamiento del programa. Ademas de un if que llamara a la 
+# funcion crearMemorias() en el momento en el que ser hayan utilizado las 3 funciones de inicializacion: RealMemory(), SwapMemory(), PageSize() y PoliticaMemory()
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
-# Ninguna
+# (p) -> tamano de pagina en bytes
 ####################################################
 #################### SALIDAS #######################
 ####################################################
@@ -352,7 +376,9 @@ def PageSize(p):
 	global tamanoPagina
 	p = int(p)
 	if(p<0):
-		print >>sys.stderr, "El tamano de la Pagina no es valido"
+		print >>sys.stderr, "******************El tamano de la Pagina no es valido******************"
+		F()
+		E()
 		return	
 	tamanoPagina = p
 	if(tamanoMemoriaReal!=None and tamanoMemoriaSwap!=None and tamanoPagina!=None and politicaReemplazo!=None):
@@ -361,7 +387,10 @@ def PageSize(p):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# En esencia solo se le asigna a la variable global politicaReemplazo el string del tipo de politica que el usuario especifique. No 
+# obstante, se agrego un edge case en el que solo puedes asignar politicas "FIFO" y "LIFO" para este servidor. En caso de que el edge case se cumpla, 
+# se terminara el programa (se llama a F y E), debido a que son asignaciones de variables globales criticas para el funcionamiento del programa. Ademas de un if que 
+# llamara a la funcion crearMemorias() en el momento en el que ser hayan utilizado las 3 funciones de inicializacion: RealMemory(), SwapMemory(), PageSize() y PoliticaMemory()
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -373,7 +402,9 @@ def PageSize(p):
 def PoliticaMemory(mm):
 	global politicaReemplazo
 	if(mm!="FIFO" and mm!="LIFO"):
-		print >>sys.stderr, "El servidor solo trabaja con politicas FIFO y LIFO"
+		print >>sys.stderr, "******************El servidor solo trabaja con politicas FIFO y LIFO******************"
+		F()
+		E()
 		return	
 	politicaReemplazo = mm
 	if(tamanoMemoriaReal!=None and tamanoMemoriaSwap!=None and tamanoPagina!=None and politicaReemplazo!=None):
@@ -382,7 +413,7 @@ def PoliticaMemory(mm):
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
-# 
+# La funcion P es una de las mas complejas. Primero se tienen 3 edge cases para evitar errores de ejecucion: se revisa que el manejador de memoria ya este listo
 ####################################################
 #################### ENTRADAS ######################
 ####################################################
@@ -396,30 +427,33 @@ def P(n,p):
 	global paginasDisponiblesReal
 	global paginasDisponiblesSwap
 	global procesos		
+	global metricasProcesos
 	if(not manejadorMemoriaListo):
-		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
-		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
+		print >>sys.stderr, "******************El manejador de memoria no esta listo, primero utilice los comandos:******************/n"
+		print >>sys.stderr, "******************-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory******************"
 		return
 	n = int(n)
 	p = int(p)
 	if(n>tamanoMemoriaReal*1024):
-		print >>sys.stderr, "El tamano del proceso excede el de la memoria real"
+		print >>sys.stderr, "******************El tamano del proceso excede el de la memoria real******************"
 		return	
 	if(buscarProcesoPorId(p) != -1): 
-		print >>sys.stderr, "El ID del proceso que deseas crear ya existe, porfavor selecciona otro ID"
+		print >>sys.stderr, "******************El ID del proceso que deseas crear ya existe, porfavor selecciona otro ID******************"
 		return
 	nMarcosPagina = int(math.ceil(n/tamanoPagina))
 	idProcesoPorRemplazar = None
 
 #Caben todos en memoria real
 	if(nMarcosPagina <= len(paginasDisponiblesReal)):
-		metricasProcesos[p] = Proceso(p)	
+		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, totalMarcosPagina]
+		metricasProcesos[p] = Proceso(p)			
 		for i in range(0, nMarcosPagina):
-			memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i, time.time()] #[indexMarcoReal] = [idProceso, idMarcoVirtual, tiempoMemoriaReal]
-		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, totalMarcosPagina]			
+			memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i, time.time()] #[indexMarcoReal] = [idProceso, idMarcoVirtual, tiempoMemoriaReal]			
 
 #Caben algunos directamente en memoria real y los demas entran por reemplazo (swap)
   	elif(nMarcosPagina > len(paginasDisponiblesReal) and nMarcosPagina-len(paginasDisponiblesReal) <= len(paginasDisponiblesSwap)):	
+		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, totalMarcosPagina]
+		metricasProcesos[p] = Proceso(p)		  
 		marcosReemplazados = len(paginasDisponiblesReal) #Cantidad de marcos que entran directamente en memoria real
 
 	#Entran directo a memoria real los pocos marcos que aun caben
@@ -430,12 +464,11 @@ def P(n,p):
 	#swap-in, indicando direccion de marco virtual inicial y final, ademas del id del proceso
 		for i in range(marcosReemplazados, nMarcosPagina):
 			swapMarco(marcosReemplazados, p)
-		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, totalMarcosPagina]
-		metricasProcesos[p] = Proceso(p)				
+			metricasProcesos[p].swap_outs+=1				
 			
 #Memoria real y Memoria swap llenas
   	else:
-		print >>sys.stderr, "Memoria Real y Swap llenas"
+		print >>sys.stderr, "******************Memoria Real y Swap llenas******************"
 		return
 	# print >>sys.stderr, memoriaReal
 	# print >>sys.stderr, "*******************************************************************"
@@ -455,20 +488,21 @@ def P(n,p):
 def A(d,p,m):
 	global direccionReal
 	global comandosA
+	global metricasProcesos
 	comandosA += 1
 	if(not manejadorMemoriaListo):
-		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
-		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
+		print >>sys.stderr, "******************El manejador de memoria no esta listo, primero utilice los comandos:******************/n"
+		print >>sys.stderr, "******************-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory******************"
 		return		
 	d=int(d)
 	p=int(p)
 	m=int(m)
 	if(buscarProcesoPorId(p) == -1):
-		print >>sys.stderr, "El proceso al que deseas acceder no existe"
+		print >>sys.stderr, "******************El proceso al que deseas acceder no existe******************"
 		return			
 	marcoVirtual = d/tamanoPagina
 	if(marcoVirtual >= procesos[buscarProcesoPorId(p)][1]):
-		print >>sys.stderr, "El proceso "+str(p)+" no contiene la direccion "+str(d)
+		print >>sys.stderr, "******************El proceso "+str(p)+" no contiene la direccion "+str(d)+"******************"
 		return		
 #La direccion se encontro en Memoria Real	
 	for real in memoriaReal:
@@ -482,6 +516,7 @@ def A(d,p,m):
 #Page Fault, se hace swap-in a ese proceso de vuelta a Memoria Real			
 	swapMarco(marcoVirtual, p)	
 	metricasProcesos[p].page_faults+=1
+	metricasProcesos[p].swap_ins+=1
 #Ahora que se realizo el swap-in, se vuelve a buscar la direccion virtual en memoria Real	
 	for real in memoriaReal:
 		if(real[0]==p and real[1]==marcoVirtual):
@@ -507,29 +542,28 @@ def L(p):
 	global memoriaReal
 	global memoriaSwap
 	if(not manejadorMemoriaListo):
-		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
-		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
+		print >>sys.stderr, "******************El manejador de memoria no esta listo, primero utilice los comandos:******************/n"
+		print >>sys.stderr, "******************-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory******************"
 		return	
 	p=int(p)
 	if(buscarProcesoPorId(p) == False):
-		print >>sys.stderr, "El proceso que deseas eliminar no existe"
+		print >>sys.stderr, "******************El proceso que deseas eliminar no existe******************"
 		return
-	if(eliminarProcesoEspecifico(p) == 0):
-		for i in range(0, len(memoriaReal)):
-			if(memoriaReal[i]!=None):
-				if(memoriaReal[i][0] == p):
-					paginasDisponiblesReal.append(i)
-					memoriaReal[i] = None
-		for i in range(0, len(memoriaSwap)):
-			if(memoriaSwap[i]!=None):
-				if(memoriaSwap[i][0] == p):
-					paginasDisponiblesSwap.append(i)
-					memoriaSwap[i] = None
-		paginasDisponiblesReal.sort()
-		paginasDisponiblesSwap.sort()		
-		print >>sys.stderr, "Las paginas de la memoria Real y memoria Swap del proceso "+str(p)+" han sido liberadas"
-		return
-	print >>sys.stderr, "El proceso "+str(p)+" no existe"
+	for i in range(0, len(memoriaReal)):
+		if(memoriaReal[i]!=None):
+			if(memoriaReal[i][0] == p):
+				paginasDisponiblesReal.append(i)
+				memoriaReal[i] = None
+	for i in range(0, len(memoriaSwap)):
+		if(memoriaSwap[i]!=None):
+			if(memoriaSwap[i][0] == p):
+				paginasDisponiblesSwap.append(i)
+				memoriaSwap[i] = None
+	paginasDisponiblesReal.sort()
+	paginasDisponiblesSwap.sort()		
+	eliminarProcesoEspecifico(p)
+	print >>sys.stderr, "Las paginas de la memoria Real y memoria Swap del proceso "+str(p)+" han sido liberadas"
+	return
 
 	# print >>sys.stderr, memoriaReal
 	# print >>sys.stderr, "*******************************************************************"
