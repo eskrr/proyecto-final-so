@@ -333,7 +333,9 @@ def E():
   return
 
 def imprimirMemoria(memoria, tipo):
-  return '\n'.join('{}[{}:{}.{}]'.format(tipo, i, memoria[i][0], memoria[i][1]) for i in range(0, len(memoria)) if memoria[i] != None)
+  return ' '.join(('{}[{}:{}.{}]').format(tipo, i, memoria[i][0], memoria[i][1]) if i % 5 != 0
+    else '{}[{}:{}.{}]\n'.format(tipo, i, memoria[i][0], memoria[i][1])
+    for i in range(0, len(memoria)) if memoria[i] != None)
 
 def imprimirComando(time, comando):
   global direccionReal
@@ -341,6 +343,7 @@ def imprimirComando(time, comando):
     ', '.join(str(p) for p in procesosTerminados)]
   direccionReal = ''
   tablaComandos.append(renglonComando)
+  tablaComandos.append(['------------------'] * 6)
   print tabulate([tablaComandos[0], renglonComando], headers='firstrow', tablefmt='orgtbl')
   return
 
