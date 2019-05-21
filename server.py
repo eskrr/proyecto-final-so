@@ -261,10 +261,11 @@ def buscarProcesoPorId(id):
 ####################################################
 # Ninguna	
 	#Se ejecuta el while mientras que haya marcos pendientes por "swap-in" a memoria real
-def swapInMarco(direccionActual, idProceso):
+def swapMarco(direccionActual, idProceso):
 	global memoriaReal
 	global memoriaSwap
 	global paginasDisponiblesSwap
+	global metricasProcesos
 	policaFIFO = False
 	if(politicaReemplazo == "FIFO"):
 		politicaFIFO = True
@@ -286,6 +287,8 @@ def swapInMarco(direccionActual, idProceso):
 	#Se realiza el swap con la direccion seleccionada				
 	memoriaSwap[paginasDisponiblesSwap.pop(0)] = memoriaReal[direccion] #	
 	memoriaReal[direccion] = [idProceso, direccionActual, time.time()] # Modifica la lista:  [indexMarcoReal][idProceso, idMarcoVirtual]
+	metricasProcesos[idProceso].swap_ins+=1
+	metricasProcesos[idProceso].swap_outs+=1
 	return	
 ##########################################################################################################################################
 ############################################# PETICIONES QUE PUEDE REALIZAR EL CLIENTE ###################################################
@@ -416,7 +419,7 @@ def P(n,p):
 		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, totalMarcosPagina]			
 
 #Caben algunos directamente en memoria real y los demas entran por reemplazo (swap)
-  elif(nMarcosPagina > len(paginasDisponiblesReal) and nMarcosPagina-len(paginasDisponiblesReal) <= len(paginasDisponiblesSwap)):	
+  	elif(nMarcosPagina > len(paginasDisponiblesReal) and nMarcosPagina-len(paginasDisponiblesReal) <= len(paginasDisponiblesSwap)):	
 		marcosReemplazados = len(paginasDisponiblesReal) #Cantidad de marcos que entran directamente en memoria real
 
 	#Entran directo a memoria real los pocos marcos que aun caben
@@ -426,18 +429,18 @@ def P(n,p):
 
 	#swap-in, indicando direccion de marco virtual inicial y final, ademas del id del proceso
 		for i in range(marcosReemplazados, nMarcosPagina):
-			swapInMarco(marcosReemplazados, p)
+			swapMarco(marcosReemplazados, p)
 		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, totalMarcosPagina]
 		metricasProcesos[p] = Proceso(p)				
 			
 #Memoria real y Memoria swap llenas
-  else:
+  	else:
 		print >>sys.stderr, "Memoria Real y Swap llenas"
 		return
 	# print >>sys.stderr, memoriaReal
 	# print >>sys.stderr, "*******************************************************************"
 	# print >>sys.stderr, memoriaSwap			
-  return
+  	return
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
@@ -477,7 +480,8 @@ def A(d,p,m):
 			direccionReal = (memoriaReal.index(real) * tamanoPagina) + (d % tamanoPagina)
 			return 
 #Page Fault, se hace swap-in a ese proceso de vuelta a Memoria Real			
-	swapInMarco(marcoVirtual, p)	
+	swapMarco(marcoVirtual, p)	
+	metricasProcesos[p].page_faults+=1
 #Ahora que se realizo el swap-in, se vuelve a buscar la direccion virtual en memoria Real	
 	for real in memoriaReal:
 		if(real[0]==p and real[1]==marcoVirtual):
