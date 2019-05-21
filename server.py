@@ -10,7 +10,7 @@ from tabulate import tabulate
 
 # Create a TCP/IP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+exit = False
 #Then bind() is used to associate the socket with the server address. In this case, the address is localhost, referring to the current server, and the port number is 10000.
 
 # Bind the socket to the port
@@ -62,6 +62,7 @@ nMarcosPaginaReal = None
 nMarcosPaginaSwap = None
 memoriasDefinidas = False
 politicaReemplazo = None
+direccionReal = ''
 
 paginasDisponiblesReal = [] # CONTENIDO DE LISTA:
                               # [ 
@@ -72,15 +73,17 @@ paginasDisponiblesSwap = [] # CONTENIDO DE LISTA:
                               #   (listado de IDs de cada marco swap disponible, ordenado de menor a mayor) 
                               # ]                                                                                   
 procesos = []               # CONTENIDO DE LISTA: (cada index representa un proceso, los procesos estan en orden de llegada)
+procesosTerminados = []
                               # [
-	              #    [
+	                            #    [
                               #       (idProceso),
-	              #	      (marcosRestantes)		              
-	              #    ]
+	                            #	      (marcosRestantes)		              
+	                            #    ]
                               # ]
                             # Utilizado tambien para saber cual proceso reemplazar:
                             #     FIFO: se reeemplaza el primer proceso en llegar, en la lista se borra elimina el primer elemento (shift left)
-                            #     LIFO: se reemplaza el ultimo proceso en llegar, en la lista se borra el ultimo elemento                              
+                            #     LIFO: se reemplaza el ultimo proceso en llegar, en la lista se borra el ultimo elemento  
+tablaComandos = [["Tiempo", "Comando", "Direccion", "M", "S", "Terminados"]]                            
 
 def defineMemorias():
 	global memoriaReal
@@ -98,6 +101,36 @@ def defineMemorias():
 		paginasDisponiblesSwap.append(i)
 	memoriasDefinidas=True
 	return
+
+def borraMemorias():
+  global memoriaReal
+  global memoriaSwap
+  global tamanoMemoriaReal
+  global tamanoMemoriaSwap
+  global tamanoPagina
+  global nMarcosPaginaReal
+  global nMarcosPaginaSwap
+  global memoriasDefinidas
+  global paginasDisponiblesReal
+  global paginasDisponiblesSwap
+  global procesos
+  global procesosTerminados
+  global tablaComandos
+  
+  memoriaReal = []
+  memoriaSwap = []
+  tamanoMemoriaReal = None
+  tamanoMemoriaSwap = None
+  tamanoPagina = None
+  nMarcosPaginaReal = None
+  nMarcosPaginaSwap = None
+  memoriasDefinidas = False
+  paginasDisponiblesReal = []
+  paginasDisponiblesSwap = []
+  procesos = []
+  procesosTerminados = []
+  tablaComandos = tablaComandos[0:1]
+  return
 
 def RealMemory(m):
 	global tamanoMemoriaReal
@@ -152,13 +185,14 @@ def eliminarProcesoReemplazado():
 	return
 
 def eliminarProcesoEspecifico(p):
-	global procesos
-	for i in range(0, len(procesos)):
+  global procesos
+  global procesosTerminados
+  for i in range(0, len(procesos)):
 		if(procesos[i][0] == p):
-			procesos.pop(i)
+			procesosTerminados.append(procesos.pop(i)[0])
 			return 0
-	print >> sys.stderr, "No se encontro el proceso especificado"
-	return -1
+  print >> sys.stderr, "No se encontro el proceso especificado"
+  return -1
 
 def P(n,p):
 	global memoriaReal
@@ -212,9 +246,9 @@ def P(n,p):
 	else:
 		print >>sys.stderr, "Memoria Real y Swap llenas"
 		return
-	print >>sys.stderr, memoriaReal
-	print >>sys.stderr, "*******************************************************************"
-	print >>sys.stderr, memoriaSwap			
+	# print >>sys.stderr, memoriaReal
+	# print >>sys.stderr, "*******************************************************************"
+	# print >>sys.stderr, memoriaSwap			
 	return
 
 # A d p m  
@@ -225,88 +259,109 @@ def P(n,p):
 # A 17 5 0  (accesar para lectura la dirección virtual 17 del proceso 5)
 
 def A(d,p,m):
-	d=int(d)
-	p=int(p)
-	m=int(m)
-	marcoVirtual = d/tamanoPagina
-	for real in memoriaReal:
-		if(real[0]==p and real[1]==marcoVirtual):
-			if(m==0):
-				print >>sys.stderr, "Se leyo ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
-			elif(m==1):
-				print >>sys.stderr, "Se modifico ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
-			return
-	for swap in memoriaSwap:
-		if(swap[0]==p and swap[1]==marcoVirtual):
-			if(m==0):
-				print >>sys.stderr, "Se leyo ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
-			elif(m==1):
-				print >>sys.stderr, "Se modifico ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
-			return	
-	print >>sys.stderr, "La direccion ["+str(p)+"."+str(d)+"] no se encuentra en memoria Real ni Swap"		
-	return
+  global direccionReal
+  d=int(d)
+  p=int(p)
+  m=int(m)
+  marcoVirtual = d/tamanoPagina
+  for real in memoriaReal:
+    if(real[0]==p and real[1]==marcoVirtual):
+      if(m==0):
+        print >>sys.stderr, "Se leyo ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
+      elif(m==1):
+        print >>sys.stderr, "Se modifico ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
+      direccionReal = (memoriaReal.index(real) * tamanoPagina) + (d % tamanoPagina)
+      return 
+  for swap in memoriaSwap:
+    if(swap[0]==p and swap[1]==marcoVirtual):
+      if(m==0):
+        print >>sys.stderr, "Se leyo ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
+      elif(m==1):
+        print >>sys.stderr, "Se modifico ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
+      direccionReal = (memoriaSwap.index(real) * tamanoPagina) + (d % tamanoPagina)
+      return
+  print >>sys.stderr, "La direccion ["+str(p)+"."+str(d)+"] no se encuentra en memoria Real ni Swap"		
+  return
 
 # L p
 # Liberar las páginas del proceso “p”.
-
-def L(p):
-	global memoriaReal
-	global memoriaSwap
-	p=int(p)
-	if(eliminarProcesoEspecifico(p) == 0):
-		for i in range(0, len(memoriaReal)):
-			if(memoriaReal[i]!=None):
-				if(memoriaReal[i][0] == p):
-					paginasDisponiblesReal.append(i)
-					memoriaReal[i] = None
-		for i in range(0, len(memoriaSwap)):
-			if(memoriaSwap[i]!=None):
-				if(memoriaSwap[i][0] == p):
-					paginasDisponiblesSwap.append(i)
-					memoriaReal[i] = None
-		paginasDisponiblesReal.sort()
-		paginasDisponiblesSwap.sort()		
-		print >>sys.stderr, "Las paginas de la memoria Real y memoria Swap del proceso "+str(p)+" han sido liberadas"
-	print >>sys.stderr, "El proceso "+str(p)+" no existe"
-
-	print >>sys.stderr, memoriaReal
-	print >>sys.stderr, "*******************************************************************"
-	print >>sys.stderr, memoriaSwap		
-	return
-
 # PROCESS: Se liberan todas las páginas del proceso “p”, tanto las que estaban en memoria real como aquellas que se encontraban en el área de swapping, quedando varios marcos de página o pedazos del área de swapping vacíos y disponibles para otras operaciones. 
 
-def F():
-	return
+
+def L(p):
+  global memoriaReal
+  global memoriaSwap
+  p=int(p)
+  if(eliminarProcesoEspecifico(p) == 0):
+    for i in range(0, len(memoriaReal)):
+      if(memoriaReal[i]!=None):
+        if(memoriaReal[i][0] == p):
+          paginasDisponiblesReal.append(i)
+          memoriaReal[i] = None
+    for i in range(0, len(memoriaSwap)):
+      if(memoriaSwap[i]!=None):
+        if(memoriaSwap[i][0] == p):
+          paginasDisponiblesSwap.append(i)
+          memoriaReal[i] = None
+    paginasDisponiblesReal.sort()
+    paginasDisponiblesSwap.sort()		
+    print >>sys.stderr, "Las paginas de la memoria Real y memoria Swap del proceso "+str(p)+" han sido liberadas"
+    return
+  print >>sys.stderr, "El proceso "+str(p)+" no existe"
+
+  # print >>sys.stderr, memoriaReal
+  # print >>sys.stderr, "*******************************************************************"
+  # print >>sys.stderr, memoriaSwap		
+  return
 
 # F 
 # Fin. Es siempre la última línea de un conjunto de especificaciones; pero pueden seguir otras líneas más para otro conjunto de solicitudes, empezando por el comando que indica la política. Habrá al menos dos especificaciones, una para cada política de reemplazo.
 
-def E():
-	return
+def F():
+  imprimirTablaComados()
+  borraMemorias()
+  return
 
 # E
 # Exit. Última línea del archivo. 
 # PROCESS: se termina la simulación
 # OUTPUT: El comando de INPUT y mensaje de despedida...
 
+def E():
+  global exit
+  exit = True
+  return
+
+def imprimirMemoria(memoria, tipo):
+  return '\n'.join('{}[{}:{}.{}]'.format(tipo, i, memoria[i][0], memoria[i][1]) for i in range(0, len(memoria)) if memoria[i] != None)
+
+def imprimirComando(time, comando):
+  global direccionReal
+  renglonComando = [time, comando, direccionReal, imprimirMemoria(memoriaReal, 'M'), imprimirMemoria(memoriaSwap, 'S'),
+    ', '.join(str(p) for p in procesosTerminados)]
+  direccionReal = ''
+  tablaComandos.append(renglonComando)
+  print tabulate([tablaComandos[0], renglonComando], headers='firstrow', tablefmt='orgtbl')
+  return
+
+def imprimirTablaComados():
+  print tabulate(tablaComandos, headers='firstrow', tablefmt='orgtbl')
+  return
+
 def call_instruction(data):
-	data = data.split()
-	print >>sys.stderr, 'Instruccion solicitada: ' + data[0]
-	print >>sys.stderr, 'parametros: ' + ''.join(data[1:len(data)])
-	# Se ejecuta la instruccion solicitada
-	print >>sys.stderr, 'Funciona ejecutar: ' + '{}({})'.format(data[0], ','.join(data[1:len(data)]))      
-	eval(data[0])(*data[1:len(data)])
-	if memoriasDefinidas:
-		print >>sys.stderr, tabulate([["Tiempo", "Comando", "Direccion", "M", "S", "Terminados"], [None, None, None, None, None, None]], 
-		headers='firstrow', tablefmt='orgtbl')  
-	return
+  parsed_data = data.split() 
+  start_time = time.time()  
+  eval(parsed_data[0])(*parsed_data[1:len(parsed_data)])
+  end_time = time.time()
+  if memoriasDefinidas:
+    imprimirComando(end_time - start_time, data)
+  return
 
 try:
   print >>sys.stderr, 'connection from', client_address
 
   # Receive the data 
-  while True:   
+  while not exit:   
     data = connection.recv(256)
     print >>sys.stderr, 'server received "%s"' % data
     if data:
