@@ -76,7 +76,7 @@ tablaComandos = [	#@ Almacena el encabezado del tabulador desplegado en terminal
 	    "S", 
 	    "Terminados"
 	  ]
-	]    
+	]
 memoriaReal = []            # CONTENIDO DE LISTA: (cada index representa el ID de cada marco real) 
                               # [ 
                               #   [ 
@@ -110,8 +110,31 @@ procesos = []               # CONTENIDO DE LISTA: (cada index representa un proc
                               # ]
                             # Utilizado tambien para saber cual proceso reemplazar:
                             #     FIFO: se reeemplaza el primer proceso en llegar, en la lista se borra elimina el primer elemento (shift left)
-                            #     LIFO: se reemplaza el ultimo proceso en llegar, en la lista se borra el ultimo elemento                          
+                            #     LIFO: se reemplaza el ultimo proceso en llegar, en la lista se borra el ultimo elemento 
+comandosA = 0 # Contador de comandos A ejecutados
+metricasProcesos = {} # el id del proceso apuntara a un objeto especial para guardar las metricas de un proceso
+class Proceso:
+  def __init__(self, id):
+    self.id = id
+    self.start_time = time.time()
+    self.end_time = None
+    self.page_faults = 0
+    self.swap_ins = 0
+    self.swap_outs = 0
 
+  def turnaround(self):
+    return self.end_time - self.start_time
+
+  def rendimiento(self):
+    return 1 - (self.page_faults / comandosA)
+
+def terminarProcesos():
+  global metricasProcesos
+  end_time = time.time()
+  for proceso_id, proceso in metricasProcesos.iteritems():
+    if proceso.end_time == None:
+      proceso.end_time = end_time
+  return
 ##########################################################################################################################################
 ############################################# FUNCIONES CREADAS PARA EL MANEJO DE MEMORIA ################################################
 ##########################################################################################################################################
@@ -156,30 +179,34 @@ def crearMemorias():
 ####################################################
 # Ninguna
 def borraMemorias():
-	global memoriaReal
-	global memoriaSwap
-	global tamanoMemoriaReal
-	global tamanoMemoriaSwap
-	global tamanoPagina
-	global manejadorMemoriaListo
-	global paginasDisponiblesReal
-	global paginasDisponiblesSwap
-	global procesos
-	global procesosTerminados
-	global tablaComandos
+  global memoriaReal
+  global memoriaSwap
+  global tamanoMemoriaReal
+  global tamanoMemoriaSwap
+  global tamanoPagina
+  global manejadorMemoriaListo
+  global paginasDisponiblesReal
+  global paginasDisponiblesSwap
+  global procesos
+  global procesosTerminados
+  global tablaComandos
+  global comandosA
+  global metricasProcesos
 	
-	memoriaReal = []
-	memoriaSwap = []
-	tamanoMemoriaReal = None
-	tamanoMemoriaSwap = None
-	tamanoPagina = None
-	manejadorMemoriaListo = False
-	paginasDisponiblesReal = []
-	paginasDisponiblesSwap = []
-	procesos = []
-	procesosTerminados = []
-	tablaComandos = tablaComandos[0:1]
-	return
+  metricasProcesos = {}
+  comandosA = 0
+  memoriaReal = []
+  memoriaSwap = []
+  tamanoMemoriaReal = None
+  tamanoMemoriaSwap = None
+  tamanoPagina = None
+  manejadorMemoriaListo = False
+  paginasDisponiblesReal = []
+  paginasDisponiblesSwap = []
+  procesos = []
+  procesosTerminados = []
+  tablaComandos = tablaComandos[0:1]
+  return
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
@@ -228,14 +255,16 @@ def eliminarProcesoReemplazado():
 ####################################################
 # Ninguna
 def eliminarProcesoEspecifico(p):
-	global procesos
-	global procesosTerminados
-	for i in range(0, len(procesos)):
-		if(procesos[i][0] == p):
-			procesosTerminados.append(procesos.pop(i)[0])
-			return 0
-	print >> sys.stderr, "No se encontro el proceso especificado"
-	return -1	
+  global procesos
+  global procesosTerminados
+  global metricasProcesos
+  for i in range(0, len(procesos)):
+    if(procesos[i][0] == p):
+      procesosTerminados.append(procesos.pop(i)[0])
+      metricasProcesos[p].end_time = time.time()
+      return 0
+  print >> sys.stderr, "No se encontro el proceso especificado"
+  return -1	
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
@@ -354,31 +383,32 @@ def PoliticaMemory(mm):
 #################### SALIDAS #######################
 ####################################################
 def P(n,p):
-	if(not manejadorMemoriaListo):
-		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
-		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
-		return
-	global memoriaReal
-	global memoriaSwap
-	global paginasDisponiblesReal
-	global paginasDisponiblesSwap
-	global procesos	
-	idProcesoPorRemplazar = None
-	n = int(n)
-	p = int(p)
-	nMarcosPagina = int(math.ceil(n/tamanoPagina))
-	if(n>tamanoMemoriaReal*1024):	#Tamano de proceso excede el tamano de la memoria real
-		print >>sys.stderr, "El tamano del proceso no puede ser mas grande que el de la memoria real"
-		return
+  if(not manejadorMemoriaListo):
+    print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
+    print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
+    return
+  global memoriaReal
+  global memoriaSwap
+  global paginasDisponiblesReal
+  global paginasDisponiblesSwap
+  global procesos	
+  idProcesoPorRemplazar = None
+  n = int(n)
+  p = int(p)
+  nMarcosPagina = int(math.ceil(n/tamanoPagina))
+  if(n>tamanoMemoriaReal*1024):	#Tamano de proceso excede el tamano de la memoria real
+    print >>sys.stderr, "El tamano del proceso no puede ser mas grande que el de la memoria real"
+    return
 
 #Caben todos en memoria real
-	if(nMarcosPagina <= len(paginasDisponiblesReal)):	
-		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, marcosRestantes]
-		for i in range(0, nMarcosPagina):
+  if(nMarcosPagina <= len(paginasDisponiblesReal)):
+    procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, marcosRestantes]
+    metricasProcesos[p] = Proceso(p)
+    for i in range(0, nMarcosPagina):
 			memoriaReal[paginasDisponiblesReal.pop(0)] = [p, i] # Modifica la lista:  [indexMarcoReal] = [idProceso, idMarcoVirtual]
 
 #Caben algunos directamente en memoria real y los demas entran por reemplazo (swap)
-	elif(nMarcosPagina > len(paginasDisponiblesReal) and nMarcosPagina-len(paginasDisponiblesReal) <= len(paginasDisponiblesSwap)):	
+  elif(nMarcosPagina > len(paginasDisponiblesReal) and nMarcosPagina-len(paginasDisponiblesReal) <= len(paginasDisponiblesSwap)):	
 		marcosReemplazados = len(paginasDisponiblesReal) #Cantidad de marcos que entran directamente en memoria real
 
 	#Entran directo a memoria real los pocos marcos que aun caben
@@ -404,15 +434,15 @@ def P(n,p):
 					marcosReemplazados+=1
 					procesos[indexProceso][1] -= 1
 		procesos.append([p, nMarcosPagina]) # Agrega nuevo proceso [idProceso, marcosRestantes]				
-			
+		metricasProcesos[p] = Proceso(p)
 #Memoria real y Memoria swap llenas
-	else:
+  else:
 		print >>sys.stderr, "Memoria Real y Swap llenas"
 		return
 	# print >>sys.stderr, memoriaReal
 	# print >>sys.stderr, "*******************************************************************"
 	# print >>sys.stderr, memoriaSwap			
-	return
+  return
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
@@ -425,33 +455,35 @@ def P(n,p):
 #################### SALIDAS #######################
 ####################################################
 def A(d,p,m):
-	if(not manejadorMemoriaListo):
+  global comandosA
+  global direccionReal
+  comandosA += 1
+  if(not manejadorMemoriaListo):
 		print >>sys.stderr, "El manejador de memoria no esta listo, primero utilice los comandos:/n"
 		print >>sys.stderr, "-RealMemory/n SwapMemory/n PageSize/n PoliticaMemory"
 		return	
-	global direccionReal
-	d=int(d)
-	p=int(p)
-	m=int(m)
-	marcoVirtual = d/tamanoPagina
-	for real in memoriaReal:
-		if(real[0]==p and real[1]==marcoVirtual):
-			if(m==0):
-				print >>sys.stderr, "Se leyo ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
-			elif(m==1):
-				print >>sys.stderr, "Se modifico ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
-			direccionReal = (memoriaReal.index(real) * tamanoPagina) + (d % tamanoPagina)
-			return 
-	for swap in memoriaSwap:
-		if(swap[0]==p and swap[1]==marcoVirtual):
-			if(m==0):
-				print >>sys.stderr, "Se leyo ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
-			elif(m==1):
-				print >>sys.stderr, "Se modifico ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
-			direccionReal = (memoriaSwap.index(real) * tamanoPagina) + (d % tamanoPagina)
-			return
-	print >>sys.stderr, "La direccion ["+str(p)+"."+str(d)+"] no se encuentra en memoria Real ni Swap"		
-	return
+  d=int(d)
+  p=int(p)
+  m=int(m)
+  marcoVirtual = d/tamanoPagina
+  for real in memoriaReal:
+  	if(real[0]==p and real[1]==marcoVirtual):
+  		if(m==0):
+  			print >>sys.stderr, "Se leyo ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
+  		elif(m==1):
+  			print >>sys.stderr, "Se modifico ["+str(memoriaReal.index(real))+":"+str(p)+"."+str(d)+"]"
+  		direccionReal = (memoriaReal.index(real) * tamanoPagina) + (d % tamanoPagina)
+  		return 
+  for swap in memoriaSwap:
+  	if(swap[0]==p and swap[1]==marcoVirtual):
+  		if(m==0):
+  			print >>sys.stderr, "Se leyo ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
+  		elif(m==1):
+  			print >>sys.stderr, "Se modifico ["+str(memoriaSwap.index(swap))+":"+str(p)+"."+str(d)+"]"
+  		direccionReal = (memoriaSwap.index(real) * tamanoPagina) + (d % tamanoPagina)
+  		return
+  print >>sys.stderr, "La direccion ["+str(p)+"."+str(d)+"] no se encuentra en memoria Real ni Swap"		
+  return
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
@@ -504,9 +536,11 @@ def L(p):
 #################### SALIDAS #######################
 ####################################################
 def F():	
-	imprimirTablaComados()
-	borraMemorias()
-	return
+  terminarProcesos()
+  imprimirTablaComados()
+  imprimirMetricasProcesos()
+  borraMemorias()
+  return
 ####################################################	
 ################### QUE HACE? ######################
 ####################################################
@@ -525,6 +559,14 @@ def E():
 ##########################################################################################################################################
 ####################################### FUNCIONES CREADAS PARA DESPLEGAR FEEDBACK AL CLIENTE #############################################
 ########################################################################################################################################## 
+
+def imprimirMetricasProcesos():
+  tablaMetricas = [['Proceso', 'Turnaround', '# Page Faults', 'Swap Ins', 'Swap Outs', 'Rendimiento']]
+  for proceso_id, proceso in metricasProcesos.iteritems():
+    tablaMetricas.append([proceso.id, proceso.turnaround(), proceso.page_faults,
+                          proceso.swap_ins, proceso.swap_outs, proceso.rendimiento()])
+  print tabulate(tablaMetricas, headers='firstrow', tablefmt='orgtbl')
+  return
 
 def imprimirMemoria(memoria, tipo):
 	return ' '.join(('{}[{}:{}.{}]').format(tipo, i, memoria[i][0], memoria[i][1]) if i % 5 != 0
@@ -546,13 +588,13 @@ def imprimirTablaComados():
 	return
 
 def call_instruction(data):
-	parsed_data = data.split() 
-	start_time = time.time()  
-	eval(parsed_data[0])(*parsed_data[1:len(parsed_data)])
-	end_time = time.time()
-	if manejadorMemoriaListo:
-		imprimirComando(end_time - start_time, data)
-	return
+  parsed_data = data.split() 
+  start_time = time.time()  
+  eval(parsed_data[0])(*parsed_data[1:len(parsed_data)])
+  end_time = time.time()
+  if manejadorMemoriaListo:
+    imprimirComando(end_time - start_time, data)
+  return
 
 ##########################################################################################################################################
 ##################################### RECIBIR INFORMACION DEL CLIENTE Y TERMINAR LA CONEXION #############################################
